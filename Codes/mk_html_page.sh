@@ -1,27 +1,17 @@
 #!/bin/bash
 
-#;DIAG_NORCPM; PSFILE: sst_ts.ps
+#;DIAG_NORCPM; FIGFILES: 
+    # figure files name "without suffix"
+    # should be ps or png file
 #;DIAG_NORCPM; HTMLFILENAME: index.html
-#;DIAG_NORCPM; COMMENT: example comment
-#;DIAG_NORCPM; TITLE: HTML TITLE
+#;DIAG_NORCPM; COMMENT: COMMENT here
+#;DIAG_NORCPM; TITLE: TITLE here
 
 # parameters
 htmlfn="HTMLFILENAME"
 comment="COMMENT"
 title="TITLE"
-
-# convert ps to png
-pid=$$
-psfile=PSFILE
-for i in $psfile; do
-    if [ ! -f "${i}" ] ; then
-        continue
-    fi 
-    convert -density 300 "${i}" tmp-${pid}.png
-    convert tmp-${pid}.png -trim "${i%.*}".png
-    rm -f tmp-${pid}.png
-    gzip -f "${i}"
-done
+figs="FIGFILES"
 
 
 # html header
@@ -31,23 +21,32 @@ echo '<html>'                       >> "${htmlfn}"
 echo '<body>'                       >> "${htmlfn}"
 
 # put comment on top
+echo '<div id=comment>'             >> "${htmlfn}"
 echo '<p>'                          >> "${htmlfn}"
 echo '<pre>'                        >> "${htmlfn}"
 echo "$comment"                     >> "${htmlfn}"
 echo '</pre>'                       >> "${htmlfn}"
 echo '</p>'                         >> "${htmlfn}"
+echo '</div>'                       >> "${htmlfn}"
 
-# collect png to make thumbnail and produce html
-pngs=$(ls *.png)
-for i in ${pngs}; do
-    ## thumbnail
-    if [[ "${i}" == *"thumb.png"* ]];then
-        continue
+
+# convert ps to png and output entry to html
+pid=$$
+for i in ${figs}; do
+    if [ -f "${i}.ps" ] ; then ## ps2png
+        convert -density 300 "${i}.ps" ${i}.png
+        gzip -f "${i}.ps"
+    fi 
+    if [ -f "${i}.png" ] ; then ## trim white edge and make thumbnail
+        convert ${i}.png  -trim tmp-${pid}.png 
+        mv tmp-${pid}.png ${i}.png
+        ## thumbnail
+        convert -thumbnail 300 "${i}.png" "${i}_thumb.png"
+        ## fig entry
+        echo "<a href='${i}.png'><img src='${i}_thumb.png'></a></br>"    >> "${htmlfn}"
     fi
-    thumb="${i%.*}_thumb.png"
-    convert -thumbnail 300 "${i}" "${thumb}"
-    echo "<a href='${i}'><img src='${thumb}'></a></br>"    >> "${htmlfn}"
 done
+
 
 # html footer
 echo '</body>'  >>"${htmlfn}"

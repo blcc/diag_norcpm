@@ -1,22 +1,22 @@
 import re
 import sys
-def gen_proc_plot(template:str,receipt):
+def gen_proc_plot(template:str,recipe):
     '''
-        replace template string with dict(receipt)
+        replace template string with dict(recipe)
     '''
     diagcmd = r';DIAG_NORCPM;' # read setting from ncl comments
     needcmd = 'need_be_replace'# special variable 
 
-    ## planeize the receipt
-    preceipt = {}
-    for i in receipt.keys():
-        if type(receipt[i]) is str: preceipt[i] = receipt[i]
-        if type(receipt[i]) is dict: 
-            for j in receipt[i].keys():
-                if j in preceipt.keys(): print("gen_proc_plot: key confilct: "+j+' in '+str(receipt[i]))
-                preceipt[j] = receipt[i][j]
-        if type(receipt[i]) is list: 
-            preceipt[i] = ",".join(['"'+j+'"' for j in receipt[i]])
+    ## planeize the recipe
+    precipe = {}
+    for i in recipe.keys():
+        if type(recipe[i]) is str: precipe[i] = recipe[i]
+        if type(recipe[i]) is dict: 
+            for j in recipe[i].keys():
+                if j in precipe.keys(): print("gen_proc_plot: key confilct: "+j+' in '+str(recipe[i]))
+                precipe[j] = recipe[i][j]
+        if type(recipe[i]) is list: 
+            precipe[i] = ",".join(['"'+j+'"' for j in recipe[i]])
 
 
     ## get necessary and default variables
@@ -34,7 +34,7 @@ def gen_proc_plot(template:str,receipt):
                 keysinscript.update({key:val})
             else:
                 print('gen_proc_plot(): cannot parse: '+cmdstr.group(0))
-    keysinscript.update(preceipt)
+    keysinscript.update(precipe)
 
     ## check necessary variables are available
     OK = True
@@ -53,9 +53,6 @@ def gen_proc_plot(template:str,receipt):
     keys = [ i for i in keysinscript.keys()]
     keys.sort(key=len,reverse=True) 
     out = template
-    #out = re.sub('\n;.*','',out)
     for i in keys:
-        out = re.sub("\n([^;]*)"+i,r'\n\g<1>'+keysinscript[i],out)
-        #out = re.sub(i,keysinscript[i],out)
-        pass
+        out = re.sub("\n([^;\n]*)"+i,'\n\g<1>'+keysinscript[i],out)
     return out

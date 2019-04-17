@@ -4,7 +4,7 @@
 
 ;DIAG_NORCPM; need_be_replace: COMPONENT, VARIABLE, FIGFILENAME
 
-;;; Following def will be all replaced with defalut value if not pre-set in receipt.
+;;; Following def will be all replaced with defalut value if not pre-set in recipe.
 ;DIAG_NORCPM; CNFILLMODE: RasterFill
 ;DIAG_NORCPM; GSNLEFTSTRING: LeftString
 ;DIAG_NORCPM; BEFORE_PLOT:
