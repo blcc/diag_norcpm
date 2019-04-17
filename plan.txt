@@ -1,0 +1,13 @@
+usage scenerio:
+    1.  cp diag_norcpm.sh to user directory
+        modify plotCase, ensDataDirs and plotRecipes in diag_norcpm.sh
+        run diag_norcpm.sh
+
+    2.  [Optional] cp plotRecipes to user directory and modify it.
+        run diag_norcpm.sh with arguments
+        ex: 
+            /path/to/diag_norcpm.sh --plotCase='Case' --ensDataDirs=$(ls -d /path/to/data/) [plotRecipes_*.yml]
+
+
+dependency between receipts:
+    searching useable library.
