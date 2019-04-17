@@ -23,7 +23,7 @@ flow chart
 ------------------
 | diag_norcpm.sh |
 |   plotCase     |
-|   recipe(s)   |
+|   recipe(s)    |
 |   input data   |
 |   output dir   |
 ------------------
@@ -31,14 +31,15 @@ flow chart
         V
 -------------------------------------
 | doplot.py                         |
-|   read and parse recipes         |
-|   generate plot scripts in recipe|
-|   (run scripts)                   |
+|   read and parse recipes          |
+|   generate plot scripts in recipe |
+|       Codes/gen_proc_plot.py      |
+|   run scripts parallelly          |
 -------------------------------------
 
 
 How it work:
-    Generate plot script is simply. doplot.py replace strings in plot script template.
+    Generate plot scripts, doplot.py replace strings in plot script template.
     The strings to be replace are defined in recipe and plot script template(as default value).
     See Codes/gen_proc_plot.py
 
