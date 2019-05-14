@@ -2,41 +2,25 @@
 #################################################################################
 ##  diag_norcpm
 ##      This package is used to plot figures for ensembled seasonal prediction.
-##      Development for NorCPM.
+##      Development for NorCPM, but should suitable for CESM-like models.
+##      Process:
 ##          
 ##                                            by Ping-Gin Chiu, start at 28Feb2019
-##                                                                v2  at 23Apr2019
+##                                                              
 #################################################################################
 
-#--------------------------- get data dir from argument -----------------------
-## dirs as arguments, plot all figures
-##      each dir in BASEDIR should contain members of simulation
-##      if the member path: 
-##              /path/to/model_ver/ana_19800115_me_hindcasts/ana_19800115_me_20090115/ana_19800115_me_20090115_mem09/atm/hist/
-##      then the arguments should be:
-##             /path/to/model_ver/ana_19800115_me_hindcasts
-BASEDIR="${1}"
-if [ -z "${BASEDIR}" ];then
-    echo "$0 <hindcasts_dir>"
-    exit
-fi
-BASEDIR="$(readlink -f ${BASEDIR}|head -n1)" ## make sure it is absolute path
-
 #--------------------------- case settings begin -----------------------
-# plotCase: name of this plot, get upper dirname
-Dir=$(basename ${BASEDIR})
-plotCase=$(basename $(dirname ${BASEDIR}))-${Dir} ## {model_ver}_{hindcasts}
+# plotCase: name of this plot
+plotCase='seas-hind-V1c_19881015'
+echo start plot $plotCase
 
-# prefixRun: ana_19800115_me_  # 
-RUNPRE=${Dir%hindcasts} # remove "hindcast" string
-if [ -z "$(ls $BASEDIR/$RUNPRE*)" ]; then # if not, take first forecast run and remove tailling date
-    RUNPRE=$(ls -d $BASEDIR/*_????????|head -n1)
-    RUNPRE=$(basename $RUNPRE | sed "s/[0-9]\{8\}$//")
-fi
+# ensDataDirs: NorESM output data dirs, can use wildcards( * and ?  using bash)
+#ensDataDirs=$(ls -d ~/NS9039K/shared/norcpm/cases/NorCPM/NorCPM_V2/ana_me_ICEC-SST-S-T-1980-2010/ana_19800115_me_mem0{1,2})
+ensDataDirs=$(ls -d ~/NS9039K/shared/norcpm/cases/NorCPM/NorCPM_V1c/ana_19800115_me_hindcasts/ana_19800115_me_19881015/ana_19800115_me_19881015_mem??)
 
 # plotRecipes: figures you want to plot, if none or empty means *.yml in Recipes/, Split with comma
-plotRecipes='mpiexm/A01_mpiexm_annualvar.yml'
-plotRecipes='16_AnoCor_seaice_frac.yml'
+#plotRecipes='02_test_recipes.yml'
+#plotRecipes='03_AnoCor.yml'
 plotRecipes=''
 
 #--------------------------- case settings end -------------------------
@@ -70,13 +54,8 @@ NCL=$(which ncl)
 #--------------------------- machine settings end -----------------------
 
 # do plot
-export plotCase BASEDIR plotRecipes RUNPRE
+export plotCase ensDataDirs plotRecipes
 export outputDir obsDataDir diag_norcpm_Root defaultRecipe
 export PYTHON NCL
-echo '================================= diag settings:'
-echo "plotCase:    ${plotCase}"
-echo "Data dir:    ${BASEDIR}"
-echo "Case prefix: ${RUNPRE}"
-echo "outputDir:   ${outputDir}"
-echo '================================= '
+echo start doplot
 "$PYTHON" "${diag_norcpm_Root}/doplot.py"

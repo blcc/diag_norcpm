@@ -14,9 +14,7 @@ except:
 
 # get envrionment variables
 plotCase            = os.environ.get('plotCase')
-#ensDataDirs         = os.environ.get('ensDataDirs').split()
-BASEDIR            = os.environ.get('BASEDIR')
-RUNPRE             = os.environ.get('RUNPRE')
+ensDataDirs         = os.environ.get('ensDataDirs').split()
 plotRecipes        = os.environ.get('plotRecipes')
 outputDir           = os.environ.get('outputDir')
 obsDataDir          = os.environ.get('obsDataDir')
@@ -33,8 +31,8 @@ CodeDir         = diag_norcpm_Root+'/Codes/'
 if not plotCase:
     print("plotCase is needed.")
     sys.exit()
-if not BASEDIR:
-    print("BASEDIR is needed.")
+if not ensDataDirs:
+    print("ensDataDirs is needed.")
     sys.exit()
 if not diag_norcpm_Root:
     print("diag_norcpm_Root cannot be remove.")
@@ -111,22 +109,20 @@ for i in plotRecipes:
         recipeRootfn = os.path.splitext(os.path.basename(i))[0]
         recipe.update({'OBSDIR':obsDataDir})
         recipe.update({'CODEDIR':CodeDir})
-        recipe.update({'BASEDIR':BASEDIR})
-        recipe.update({'RUNPRE':RUNPRE})
+        recipe.update({'INPUTDIRS':ensDataDirs})
         recipe.update({'recipeName':recipe_name})
 
         #### check array, change it to string
-        if False : # v1 code, ensDataDirs is not used in v2
-            for s in recipe.get("Scripts"): ## should be an array
-                suffix = os.path.splitext(s.get("plotScript"))[1]
-                for k in s.keys(): ## each key
-                    if type(s.get(k)) == list:
-                        if suffix in ['.ncl','.py']:
-                            s.update({k:",".join(['"'+i+'"' for i in ensDataDirs])})
-                        elif suffix == 'sh':
-                            s.update({k:" ".join([i for i in ensDataDirs])})
-                        else:
-                            print('not sure how to express array in '+s.get('plotScript'))
+        for s in recipe.get("Scripts"): ## should be an array
+            suffix = os.path.splitext(s.get("plotScript"))[1]
+            for k in s.keys(): ## each key
+                if type(s.get(k)) == list:
+                    if suffix in ['.ncl','.py']:
+                        s.update({k:",".join(['"'+i+'"' for i in ensDataDirs])})
+                    elif suffix == 'sh':
+                        s.update({k:" ".join([i for i in ensDataDirs])})
+                    else:
+                        print('not sure how to express array in '+s.get('plotScript'))
         Recipes.append(recipe)
 
 ### generate run script use plotScript with variables
@@ -162,7 +158,7 @@ for recipe in Recipes:
             print(CodeDir+'/'+script.get("plotScript")+" not exist, skip")
             continue
         res = gen_proc_plot(open(CodeDir+'/'+script.get("plotScript"),'r').read(),scriptDict)
-        fn = str(num)+'-'+os.path.basename(script.get("plotScript"))
+        fn = str(num)+'-'+script.get("plotScript")
         open(outputDir+'/'+recipeName+'/'+fn,"w").write(res)
         num += 1
 
@@ -198,13 +194,6 @@ for r in AllScripts.keys():
     runallTxt += 'cd '+outputDir+'\n'
 open('runall.sh','w').write(runallTxt)
 
-### output update script
-#### script to rerun diag_norcpm
-updateTxt  = 'cd .. \n'
-updateTxt += diag_norcpm_Root+'/diag_norcpm.sh '+BASEDIR+'\n'
-open('update.sh','w').write(updateTxt)
-
-
 ### run all (parallel)
 ### AllScripts store all generated scripts, {recipe1: [s1,s2,s3], recipe2:[r1,r2],...}
 #### function for threading
@@ -223,12 +212,10 @@ def run_seq(workdir,scripts,logfile):
             cmd = 'sh'
         else: 
             cmd = 'sh'  # bad idea
-        #print('    running '+cmd+' '+workdir+'/'+fn)
-        print('    '+os.path.basename(workdir)+': '+fn)
+        print('    running '+cmd+' '+workdir+'/'+fn)
         logf.write('>>>>>>>>>>>>>>>> running '+cmd+' '+fn+'\n')
-        logf.flush()
         sp.run([cmd,fn],stdout=logf,stderr=logf)
-    logf.close()
+    
 #### make and run process list
 procall = []
 for r in AllScripts.keys():
@@ -309,7 +296,6 @@ for i in dirs:
     html += '<hr> \n'
 
 #### html footer
-html += '<p align="right"><small>by pgchiu</small></p> \n'
 html += '</body> \n'
 html += '</html> \n'
 

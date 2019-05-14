@@ -3,6 +3,7 @@
 ;;DIAG_NORCPM; TITLE: Anomaly Correlation
 ;;DIAG_NORCPM; TITLELEFT: 
 ;;DIAG_NORCPM; TITLERIGHT: 
+
 load "CODEDIR/func_read_all_members.ncl"
 begin
     ;; Anomaly Correlation (AC)

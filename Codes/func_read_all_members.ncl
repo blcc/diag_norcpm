@@ -36,12 +36,33 @@ begin
         var@lon2d = lon
         var@area2d = area
     end if
+end
+undef("ls_monthly_nc_files")
+function ls_monthly_nc_files(path,component)
+begin
+    ;; path is the member dir, which contains:
+    ;;      path/atm/hist/*.nc
+    monfix=""
+    if(component.eq."ocn")then
+        monfix="hm"
+    end if
+    if(component.eq."atm")then
+        monfix="h0"
+    end if
 
+    fns = systemfunc("ls "+path+"/"+component+"/hist/*"+monfix+"*.nc|sort|head -n13") ;; only 13 month data, bad idea
+    if(any(ismissing(fns)))then
+        print("ls_monthly_nc_files(): no file in "+path)
+        exit
+    end if
+    return fns
 end
 
 undef("read_all_files_var")
 function read_all_files_var(fns[*]:string,varname[1]:string,ocngridfile[1]:string)
 begin
+    ;; assume one file per member
+    ;;     not used in forecast dirs
     ;; read all var in filenames(fns)
     ;; will add a dim to left as members(fns)
     ;; assume var in fns are same dimsizes
@@ -89,6 +110,100 @@ begin
     varall!0 = "members"
 
     assign_ocn_grid(varall,ocngridfile)
+    return varall
+end
+undef("read_norcpm_forecast_members_var")
+function read_norcpm_forecast_members_var(forecastdir[1],component,varname,ocngridfile)
+begin
+    ;; read members in forecastdir
+    memberdirs = systemfunc("ls -d "+forecastdir+"/*mem??")
+    nmember = dimsizes(memberdirs)
+    fns = ls_monthly_nc_files(memberdirs(0),component)
+    fs = addfiles(fns,"r")
+    var1m = fs[:]->$varname$
+    if(typeof(var1m).eq."short")then
+        var1m := short2flt(var1m) ;; apply add_offset and scale_factor
+        delete(var1m@valid_range)
+        ;delete(var1m@actural_range)
+    end if
+    dim1m = dimsizes(var1m)
+    ndim1 = dimsizes(dim1m)
+
+    varall = conform_dims(array_append_record(nmember,dim1m,0),var1m,ispan(1,ndim1,1))
+    delete(fns)
+    delete(var1m)
+    delete(fs)
+
+    ;; read other members
+    do i = 1, nmember-1
+        fns = ls_monthly_nc_files(memberdirs(i),component)
+        if(any(ismissing(fns)))then
+            print("read_all_forecast_members_var(): no data file in "+memberdirs(i))
+            exit
+        end if
+
+        fs = addfiles(fns,"r")
+        var1m = fs[:]->$varname$
+        if(typeof(var1m).eq."short")then
+            var1m := short2flt(var1m) ;; apply add_offset and scale_factor
+            delete(var1m@valid_range)
+            ;delete(var1m@actural_range)
+        end if
+        if(any(dim1m.ne.dimsizes(var1m)))then
+            print("dims mismatch in "+memberdirs(i))
+            print("varall: "+str_join(dimsizes(varall),","))
+            print("var1m: "+str_join(dimsizes(var1m),","))
+        end if
+
+        if(ndim1.eq.3)then ;; t,y,x
+            varall(i,:,:,:) = var1m
+        end if
+        if(ndim1.eq.4)then ;; time,lev,y,x
+            varall(i,:,:,:,:) = var1m
+        end if
+
+        delete(fns)
+        delete(var1m)
+    end do
+
+    return varall
+end
+undef("read_norcpm_forecasts_members_var")
+function read_norcpm_forecasts_members_var(forecastdirs,component,varname,ocngridfile)
+begin
+    ;; read all forecasts and members
+    ;; 
+    ncast = dimsizes(forecastdirs)
+    
+    ;; read 1st members for dims
+    fore1 = read_norcpm_forecast_members_var(forecastdirs(0),component,varname,ocngridfile)
+    dims1 = dimsizes(fore1) ;; member,y,x or member,lev,y,x
+    ndim1 = dimsizes(dims1)
+    if(.not.any(ndim1.eq.(/4,5/)))then
+        print("read_norcpm_forecasts_members_var(): ndim1 is not support: "+ndim1)
+        print("forecastdirs(0): "+forecastdirs(0))
+        exit
+    end if
+
+    varall = conform_dims(array_append_record(ncast,dims1,0),fore1,ispan(1,ndim1,1))
+    delete(fore1)
+
+    ;; read other forecasts
+    do i = 1, ncast-1
+        fore1 = read_norcpm_forecast_members_var(forecastdirs(i),component,varname,ocngridfile)
+        if(ndim1.eq.4)then ;; forecast,members,time,y,x
+            varall(i,:,:,:,:) = fore1
+        end if
+        if(ndim1.eq.5)then ;; forecast,members,time,lev,y,x
+            varall(i,:,:,:,:,:) = fore1
+        end if
+
+        delete(fore1)
+    end do
+
+    if(component.eq."ocn")then
+        assign_ocn_grid(varall,ocngridfile)
+    end if
     return varall
 end
 
@@ -156,12 +271,10 @@ begin
     end if
     ndmon = dimsizes(dmonths)
     needMM = toint(t0a(0,1))+dmonths
-    print("t0: "+t0a(0,0)+"-"+t0a(0,1))
     needYY = needMM*0+toint(t0a(0,0))
     needYY = where(needMM.gt.12,needYY+1,needYY)
     needMM = where(needMM.gt.12,needMM-12,needMM)
     needYYMMs = needYY+"-"+sprinti("%2.2d",needMM)
-    print("needMM: "+str_join(needMM,","))
     delete(dmonths)
     
     ;; create var for all members
@@ -247,6 +360,8 @@ begin
     delete(varF1)
     delete(memDirs)
     
+    ;actual_range = varall@actual_range
+    ;vaild_range = varall@vaild_range
     do f = 1,nforecast-1
         memDirs = systemfunc("ls -d "+forecastDirs(f)+"/*")
         varF1 = read_noresm_members_leadseason(memDirs,component,vn,lead_season,ocngridfile)
@@ -257,6 +372,14 @@ begin
             print("this readMM: "+str_join(varF1@readMM,","))
             sameReadMM = False
         end if
+        ;if(isatt(varF1,"actual_range"))then
+        ;    actual_range(0) := min((/varF1@actual_range(0),actual_range(0)/))
+        ;    actual_range(1) := max((/varF1@actual_range(1),actual_range(1)/))
+        ;end if
+        ;if(isatt(varF1,"valid_range"))then
+        ;    valid_range(0) := min((/varF1@valid_range(0),valid_range(0)/))
+        ;    valid_range(1) := max((/varF1@valid_range(1),valid_range(1)/))
+        ;end if
         if(ndim.eq.6);then
             varall(f,:,:,:,:,:) = varF1
         end if
@@ -275,6 +398,11 @@ begin
     else
         delete(varall@readMM)
     end if
+    delete(varall@readYY)
+    delete(varall@t0)
+    delete(varall@t0units)
 
+    ;varall@actural_range = actural_range
+    ;varall@valid_range = valid_range
     return varall
 end

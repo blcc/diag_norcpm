@@ -5,7 +5,7 @@ def gen_proc_plot(template:str,recipe):
         replace template string with dict(recipe)
     '''
     diagcmd = r';DIAG_NORCPM;' # read setting from ncl comments
-    needcmd = 'need_be_replace'# special variable 
+    needcmd = 'NeedBeReplace'  # special variable 
 
     ## planeize the recipe
     precipe = {}
@@ -52,7 +52,27 @@ def gen_proc_plot(template:str,recipe):
     ## replace keys in template
     keys = [ i for i in keysinscript.keys()]
     keys.sort(key=len,reverse=True) 
+    ### print replacing strings
+    if True:
+        print('======== keys to replace with order')
+        for i in keys:
+            print('    '+i+': '+keysinscript[i])
+        print('===================================')
+    ### do replace
     out = template
-    for i in keys:
-        out = re.sub("\n([^;\n]*)"+i,'\n\g<1>'+keysinscript[i],out)
+    if False: # replace whole template at once
+        for i in keys:
+            out = re.sub("\n([^;\n]*)"+i,'\n\g<1>'+keysinscript[i],out)
+    if True: # replace one by one line
+        outlines = out.split("\n")
+        out = ""
+        for j in outlines:
+            if diagcmd in j:
+                out += j+'\n'
+                continue
+            else:
+                afterstr = j
+                for i in keys:
+                    afterstr = re.sub(i,keysinscript[i],afterstr)
+                out += afterstr+'\n'
     return out
